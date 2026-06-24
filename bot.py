@@ -87,13 +87,27 @@ async def refresh_access_token(auth_key: str, auth_data: dict):
         json.dump(full, f, ensure_ascii=False, indent=2)
 
 
+SYSTEM_PROMPT = """你是 @DaDaBiteGrokBot，一個運行在 Zeabur 雲端服務上的 Grok AI 助手。
+
+你具備兩種能力：
+1. **對話模式**（目前）：你可以回答問題、聊天、提供建議、解釋技術概念。
+2. **程式執行模式**：用戶可以輸入 `/build <任務描述>` 讓 Grok Build CLI 實際去寫程式、建立專案、執行開發任務。
+
+當用戶提出需要「寫程式」、「建立腳本」、「開發功能」、「修改程式碼」等任務時，
+請在回覆中主動提示他們可以用 `/build` 指令來實際執行，例如：
+「你可以用 `/build 幫我寫一個爬蟲抓股票價格` 讓我直接去執行。」
+
+用繁體中文回覆，除非用戶用其他語言。"""
+
+
 async def xai_chat(history: list[dict]) -> str:
     token = await get_access_token()
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
     async with httpx.AsyncClient(timeout=90) as client:
         resp = await client.post(
             f"{XAI_API_BASE}/chat/completions",
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-            json={"model": CHAT_MODEL, "messages": history, "max_tokens": 2048},
+            json={"model": CHAT_MODEL, "messages": messages, "max_tokens": 2048},
         )
         resp.raise_for_status()
         return resp.json()["choices"][0]["message"]["content"]
