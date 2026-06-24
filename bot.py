@@ -38,16 +38,26 @@ def load_auth() -> dict:
     raise ValueError("No xAI auth entry found in auth.json")
 
 
+def parse_iso_dt(s: str) -> datetime:
+    # Truncate sub-second to 6 digits (microseconds), handle Z suffix
+    s = re.sub(r'(\.\d{6})\d+', r'\1', s).replace('Z', '+00:00')
+    dt = datetime.fromisoformat(s)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 async def get_access_token() -> str:
     auth_key, auth_data = load_auth()
     expires_at = auth_data.get("expires_at", "")
     if expires_at:
-        exp = datetime.fromisoformat(expires_at.replace('Z', '+00:00').replace('Z', '').rstrip('+00:00') if 'Z' in expires_at else expires_at)
-        if exp.tzinfo is None:
-            exp = exp.replace(tzinfo=timezone.utc)
-        if datetime.now(timezone.utc) >= exp - timedelta(minutes=5):
-            await refresh_access_token(auth_key, auth_data)
-            _, auth_data = load_auth()
+        try:
+            exp = parse_iso_dt(expires_at)
+            if datetime.now(timezone.utc) >= exp - timedelta(minutes=5):
+                await refresh_access_token(auth_key, auth_data)
+                _, auth_data = load_auth()
+        except Exception:
+            pass  # Use token as-is if we can't parse expiry
     return auth_data["key"]
 
 
