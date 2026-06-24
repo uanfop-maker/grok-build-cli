@@ -6,13 +6,15 @@ RUN apt-get update && apt-get install -y \
     python3 python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --no-cache-dir "python-telegram-bot==21.*"
+RUN pip3 install --no-cache-dir "python-telegram-bot==21.*" httpx
 
 RUN curl -fsSL https://x.ai/cli/install.sh | bash
 
-ENV PATH="/root/.local/bin:/root/.grok/bin:$PATH"
+ENV PATH="/root/.local/bin:/root/.grok/bin:/usr/local/bin:$PATH"
 
 WORKDIR /app
 COPY bot.py /app/bot.py
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-CMD ["python3", "/app/bot.py"]
+CMD ["/app/entrypoint.sh"]
